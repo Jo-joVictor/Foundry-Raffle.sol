@@ -1,33 +1,58 @@
-# Provably Random Raffle Contracts
+# Raffle Lottery Smart Contract
 
-## About
+## Overview
+This project is a decentralized raffle (lottery) smart contract built with Solidity.  
+It uses Chainlink VRF v2.5 for provably fair randomness and Chainlink Automation to automatically trigger winner selection at fixed time intervals.
 
-This code is to create a proveably random smart contract lottery.
+Players enter by paying a set entrance fee. After the interval has passed, a random winner is selected, and all ETH in the contract is transferred to the winner. The contract then resets for the next round.
 
-## What we want it to do?
+---
 
-1. Users can enter by paying for a ticket
-    1. The ticket fees are going to go to the winner during the draw
-2. After X period of time, the lottery will automatically draw a winner
-    1. And this will be done programatically
-3. Using Chainlink VRF & Chainlink Automation
-    1. Chainlink VRF => Randomness
-    2. Chainlink Automation => Time based trigger
- 
+## Features
+- Secure state machine using `enum` for raffle state.
+- Gas-optimized custom errors.
+- Events for transparency (`RaffleEnter`, `RequestedRaffleWinner`, `WinnerPicked`).
+- Follows the CEI (Checks-Effects-Interactions) pattern.
+- Includes unit and staging tests.
 
- # Provably Fair Raffle
+---
 
-A decentralized raffle using Chainlink VRF for randomness and Automation for execution.
+## How It Works
+1. Players call `enterRaffle()` with at least the entrance fee.
+2. Chainlink Automation checks conditions:
+   - Time interval has passed.
+   - Raffle is open.
+   - At least one player entered.
+   - Contract holds ETH.
+3. If true, `performUpkeep()` requests randomness from Chainlink VRF.
+4. `fulfillRandomWords()` selects a random winner and transfers the prize.
+5. The raffle resets.
+
+---
+
+## Configuration
+Replace the placeholder values with actual values before deployment:
+
+```solidity
+address constant VRF_COORDINATOR = 0x...; // Network VRF Coordinator
+bytes32 constant GAS_LANE = 0x...;        // KeyHash
+uint64 constant SUBSCRIPTION_ID = 1234;   // Your Chainlink subscription ID
+uint32 constant CALLBACK_GAS_LIMIT = 500000;
+uint256 constant ENTRANCE_FEE = 0.01 ether;
+uint256 constant INTERVAL = 604800;       // 1 week
 
 **Live Contract:** `0xaC48b201E9D3f27076Da1Bb518E194B88B5288fe` (Sepolia)
 
-## Features
--  Provably fair randomness
--  Automated winner selection  
--  Gas optimized
--  Comprehensive tests
+forge script script/DeployRaffle.s.sol \
+  --rpc-url $SEPOLIA_RPC_URL \
+  --private-key $PRIVATE_KEY \
+  --broadcast
 
-## Usage
-```bash
-forge test                    # Run tests
-forge script script/DeployRaffle.s.sol --broadcast  # Deploy
+flowchart TD
+    A[Players Enter Raffle] --> B[Wait for Interval]
+    B --> C[Automation Triggers Upkeep]
+    C --> D[VRF Randomness Request]
+    D --> E[VRF Returns Random Number]
+    E --> F[Winner Selected]
+    F --> G[ETH Transferred to Winner]
+    G --> H[Raffle Resets]
